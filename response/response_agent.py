@@ -53,7 +53,7 @@ def respond_to_survey(question, api_key=os.getenv("openRouterAPIkey")):
                 
         
         if not chat.choices or len(chat.choices) == 0:
-            raise RuntimeError("No response given by model")
+            raise RuntimeError("No Response Given by Response Agent!")
         messages.append(chat.choices[0].message)
 
         tool_calls = chat.choices[0].message.tool_calls

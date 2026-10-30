@@ -1,6 +1,5 @@
 from openai import OpenAI
 from openrouter import OpenRouter
-import os
 import ast
 
 def update_profile(new_info, api_key):

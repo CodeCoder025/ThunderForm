@@ -11,7 +11,9 @@ from response.response_agent import respond_to_survey
 api_key = os.getenv("openRouterAPIkey")
 
 def main():
-    respond_to_survey("What is your employment status?")
+    survey_status = None
+    while survey_status != "complete":
+        pass
 
 if __name__ == "__main__":
     main()
