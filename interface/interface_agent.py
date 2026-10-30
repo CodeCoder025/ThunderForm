@@ -15,7 +15,8 @@ def submit_answer(answer, session, api_key): #the answer variable is a list of t
     Your role is to facilitate the input of responses given to you, into the survey questionaire itself, which is open on the browser of the person.
     You have access to an MCP browser connection.
     You will be given the question and the answer in the form of [question, answer], and your job is to use MCP tools to input the given answer into its corresponding field. 
-    After filling in the answer to the question, you are to then carry out a suitable interaction to proceed to the next question or submit the survey response (e.g. scroll down, "submit", "next" button, etc)
+    After filling in the answer to the question, you are to then carry out a suitable interaction to proceed to the next question or submit the survey response (e.g. scroll down, "submit", "next" button, etc).
+    If answer is submitted smoothly, return 0. (for multiple choice questions) if answer is not one of the options, return 1. If survey is complete, return 2.
     """},
                 {"role":"user","content":answer}]
 
