@@ -40,7 +40,7 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
             print("Answer Submission (Interface) Agent Called Tool: %s"%tool_name)
             arguments = ast.literal_eval(tool_calls[0].function.arguments)
             output = await execute_tool(session, tool_name, arguments)
-            messages.append({"role":"tool","tool_call_id":tool_calls[0].id, "content":format_tool_output(output)})
+            messages.append({"role":"tool","tool_call_id":tool_calls[0].id, "content":output})
 
 async def extract_question(api_key, session):
     client = OpenAI(api_key = api_key, base_url = "https://openrouter.ai/api/v1")
@@ -50,11 +50,14 @@ async def extract_question(api_key, session):
     You are to return the question and options exactly in the form of a list, and nothing else. The list should take the form as below --> [question, [option1, option2, ...]] in the event of a multiple-choice question and [question, None] in the event of a free-response question.
     Only extract one question. The question to extract is the question directly after the last question which has already been filled out (i.e. the first question which has yet to be filled out). If no question has been filled out, return the information for the first question.
     You have access to an MCP browser connection.
+    I do not need to know whether or not any question has been filled out.
+    It your response, do not give your commentary, your opinion, or any other words. Your asnwer must be exactly in the form of the list of the question and options if applicable.
+    Hence, your response should start with "[" and end with "]"
     """}]
 
     while True:
         chat = client.chat.completions.create(
-            model = "deepseek/deepseek-v4-flash",
+            model = "deepseek/deepseek-v4-pro",
             messages = messages,
             tools=format_tools_advertisement((await session.list_tools()).tools),
             tool_choice="auto"
@@ -68,7 +71,7 @@ async def extract_question(api_key, session):
         if (not tool_calls or len(tool_calls) == 0) and type(ast.literal_eval(chat.choices[0].message.content)) == list:
             model_output = ast.literal_eval(chat.choices[0].message.content)
             print(type(model_output))
-            
+
             if model_output[1] == None or model_output[1] == []:
                 question_extracted = {"question":model_output[0],
                                     "type":"Free-response",

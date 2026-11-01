@@ -11,6 +11,7 @@ This would repeat until the survey is complete, determined by the interface agen
 
 ### Yet to Do:
 
+- fix error of interface question extractor agent not returning question and options in exact format required. suggestion to try JSON format, and simplify prompt.
 - survey logger (what surveys have been completed, how many API tokens it took, payout if any, etc)
 - option to disable synthesis of hypothetical responses
 - nice, clean user interface
@@ -28,5 +29,3 @@ Please note that this software gives the agent control over your browser. By run
 ### Violation of Terms of Use
 
 Many survey or form-hosting software prohibit the use of agents or autonomous algorithms to fill in surveys. Please ensure that the use of WebSlave does not violate the terms of use of any third-party software. This tool is built to be used in good faith.
-
-### Last Error Message
