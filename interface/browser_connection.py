@@ -29,7 +29,7 @@ def format_tools_advertisement(mcp_tools):
                                 "function":{
                                     "name":tool.name,
                                     "description":tool.description or "",
-                                    "parameters": tool.inputSchema
+                                    "parameters": tool.input_schema
                                 }})
         return formatted_tools
 
@@ -43,7 +43,7 @@ def format_tool_output(output):
 
     formatted_output = "\n".join(parts)
 
-    if output.isError:
+    if output.is_error:
         return "Tool Execution Error: %s"%output
 
     if formatted_output:
