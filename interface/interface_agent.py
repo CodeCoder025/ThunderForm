@@ -72,7 +72,17 @@ def extract_question(api_key, session):
 
         tool_calls = chat.choices[0].message.tool_calls
         if not tool_calls or len(tool_calls) == 0:
-            return chat.choices[0].message.content
+            model_output = ast.literal_eval(chat.choices[0].message.content)
+            if model_output[1] == None or model_output[1] == []:
+                question_extracted = {"question":model_output[0],
+                                    "type":"Free-response",
+                                    "options":None}
+            else:
+                question_extracted = {"question":model_output[0],
+                                                    "type":"Multiple-choice",
+                                                    "options":model_output[1]}
+
+            return question_extracted
         else:
             tool_name = tool_calls.function.name
             arguments = ast.literal_eval(tool_calls.function.arguments)
