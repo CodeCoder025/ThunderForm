@@ -62,6 +62,7 @@ def update_profile(new_info, api_key):
             break
         else:
             tool_calls = tool_calls[0]
+            print("Profile Manager Called Tool: %s"%tool_calls.function.name)
             arguments = ast.literal_eval(tool_calls.function.arguments)
 
             if tool_calls.function.name == "ReadFile":
