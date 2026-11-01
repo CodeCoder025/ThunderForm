@@ -37,6 +37,7 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
             return chat.choices[0].message.content
         else:
             tool_name = tool_calls[0].function.name
+            print("Answer Submission (Interface) Agent Called Tool: %s"%tool_name)
             arguments = ast.literal_eval(tool_calls[0].function.arguments)
             output = await execute_tool(session, tool_name, arguments)
             messages.append({"role":"assistant","tool_call_id":tool_calls.id, "content":format_tool_output(output)})
@@ -77,6 +78,7 @@ async def extract_question(api_key, session):
             return question_extracted
         else:
             tool_name = tool_calls[0].function.name
+            print("Question Extractor (Interface) Agent Called Tool: %s"%tool_name)
             arguments = ast.literal_eval(tool_calls[0].function.arguments)
             output = await execute_tool(session, tool_name, arguments)
             messages.append({"role":"assistant","tool_call_id":tool_calls[0].id, "content":output})

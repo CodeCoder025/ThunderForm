@@ -71,6 +71,7 @@ def respond_to_survey(question, api_key=os.getenv("openRouterAPIkey")):
             return str(info_given)
         
         else:
+            print("Response Agent Called Tool: %s"%tool_calls[0].function.name)
             if tool_calls[0].function.name == "ReadFile":
                 arguments_asstring = tool_calls[0].function.arguments
                 arguments= ast.literal_eval(arguments_asstring)
