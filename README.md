@@ -11,8 +11,7 @@ This would repeat until the survey is complete, determined by the interface agen
 
 ### Yet to Do:
 
-- handling of return codes (0,1,2) from response agent
-- code to glue all functions together into a single, runnable workflow
+- survey logger (what surveys have been completed, how many API tokens it took, payout if any, etc)
 - option to disable synthesis of hypothetical responses
 - nice, clean user interface
 - completing multiple surveys in a single run (can navigate between a survey selection menu)
