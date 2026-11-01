@@ -68,7 +68,7 @@ def respond_to_survey(question, api_key=os.getenv("openRouterAPIkey")):
         if tool_calls is None:
             info_given = [question, messages[-1].model_dump().get("content")]
             update_profile(info_given, api_key)
-            return chat.choices[0].message.content
+            return str(info_given)
         
         else:
             if tool_calls[0].function.name == "ReadFile":
