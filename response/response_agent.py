@@ -12,9 +12,8 @@ def respond_to_survey(question, api_key=os.getenv("openRouterAPIkey")):
 
     messages = [{"role":"system", "content":"""
     You are a survey response agent.
-    You are to answer a question, given in the form of {"question":question, "type":multiple_choice_or_free_response,"options":none_if_free_response}
     A description of your profile can be found in the file response/my_profile.txt.
-    Answer the following question based on this profile.
+    Answer the given question based on this profile.
     If there is no information related to the question in the profile description, invent an answer.
     For multiple-choice questions, state your answer exactly as stated in the options. For free response questions, answer the question directly; do not add any unnecessary details into your answer.
     Do not answer in a full sentence, just give the exact relevant detail."""},
