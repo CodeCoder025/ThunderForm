@@ -12,7 +12,7 @@ def update_profile(new_info, api_key):
 
     while True:
         chat = client.chat.completions.create(
-            model = "deepseek/deepseek-v4-flash",
+            model = "openai/gpt-oss-120b",
             messages = messages,
             tools= [
                 {"type":"function",

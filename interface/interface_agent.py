@@ -12,7 +12,7 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
 
     messages = [{"role":"system","content":"""
     Youre role is to fill in the question with the answer provided.
-    Afterwards, if all questions on the page have been filled in, click on the relevant button (e.g. "submit","next", etc) to proceed to the next page.
+    Afterwards, if all questions on the page have been filled in, click on the relevant button (e.g. "submit","next", "proceed", arrow symbol button, etc) to proceed to the next page. You can inspect the DOM to understand which button will help you get to the next page.
     Your output MUST be in a JSON format only
     Example:
     {"return code":"0"}
@@ -24,7 +24,7 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
 
     while True:
         chat = client.chat.completions.create(
-            model = "deepseek/deepseek-v4-flash",
+            model = "openai/gpt-oss-120b",
             messages = messages,
             tools=format_tools_advertisement((await session.list_tools()).tools),
             tool_choice = "auto"
@@ -68,7 +68,7 @@ async def extract_question(api_key, session):
 
     while True:
         chat = client.chat.completions.create(
-            model = "deepseek/deepseek-v4-flash",
+            model = "openai/gpt-oss-120b",
             messages = messages,
             tools=format_tools_advertisement((await session.list_tools()).tools),
             tool_choice="auto"

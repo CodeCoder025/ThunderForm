@@ -21,7 +21,7 @@ def respond_to_survey(question, api_key=os.getenv("openRouterAPIkey")):
 
     while True:
         chat = client.chat.completions.create(
-            model="deepseek/deepseek-v4-flash",
+            model="openai/gpt-oss-120b",
             messages = messages,
             tools = [{"type":"function",
                       "function":{
