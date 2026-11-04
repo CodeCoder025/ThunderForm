@@ -11,16 +11,39 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
     client = OpenAI(api_key = api_key, base_url = "https://openrouter.ai/api/v1")
 
     messages = [{"role":"system","content":"""
-    Youre role is to fill in the question with the answer provided.
-    Afterwards, if all questions on the page have been filled in, click on the relevant button (e.g. "submit","next", "proceed", arrow symbol button, etc) to proceed to the next page. You can inspect the DOM to understand which button will help you get to the next page.
-    Your output MUST be in a JSON format only
-    Example:
-    {"return code":"0"}
-    return code 0 means that the question was sucessfully filled, 1 means that the question cannot be filled (e.g. for multiple choice, answer is not an option), 2 means that the entire survey is complete (i.e. a "submit" or "finish survey" button was clicked. "Next page" or related buttons do not count!)
+    # Role
+    You are a survey answer submission agent.
 
-    Do not add any commentary, explainations or supporting text. Only return the JSON.
+    # Objective
+    Fill in the field of the given question with the answer provided.
+
+    ## Workflow
+    1. Inspect the current page.
+    2. Identify the relevant question.
+    3. Fill in the answer.
+    4. Check whether other questions remain unanswered.
+    5. Only navigate when the page is complete.
+
+    ## Critical Rules
+    - NEVER navigate while unanswered questions remain.
+    - NEVER submit the survey prematurely.
+    - Do not modify previously submitted answers.
+
+    ## Return Codes
+    - 0: Successfully filled in.
+    - 1: Unable to fill in.
+    - 2: Entire survey completed and submitted.
+
+    ## Output Format
+    Return ONLY valid JSON:
+
+    ```json
+    {"return code":"0"}
     """},
                 {"role":"user","content":answer}]
+
+    if answer == "Abort":
+        messages = [{"role":"system","content":"Navigate to the next section of the survey."}]
 
     while True:
         chat = client.chat.completions.create(
@@ -42,12 +65,12 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
             except:
                 messages.append({"role":"user","content":"""Ouptut must be in JSON format of {"return code":str} only"""})
                 print("Answer Submission Agent Failed to Format. Retrying...")
-                continue
-            return return_code
+                return 1
+
         else:
             tool_name = tool_calls[0].function.name
             print("Answer Submission (Interface) Agent Called Tool: %s"%tool_name)
-            arguments = ast.literal_eval(tool_calls[0].function.arguments)
+            arguments = json.loads(tool_calls[0].function.arguments)
             output = await execute_tool(session, tool_name, arguments)
             messages.append({"role":"tool","tool_call_id":tool_calls[0].id, "content":output})
 
@@ -55,16 +78,44 @@ async def extract_question(api_key, session):
     client = OpenAI(api_key = api_key, base_url = "https://openrouter.ai/api/v1")
     
     messages = [{"role":"system","content":"""
-    Your task is to identify the first unanswered question in the survey on the browser of the user.
-    After inspecting the browser, you MUST return a JSON array.
-    Example:
-    [{
-    "question":"Do you speak English?",
-    "type":"multiple choice",
-    "options":["Yes","No"]}]
-    Do not provide explainations, commentary, or introductory text.
-    Questions are either "multiple choice" or "free response".
-    """}]
+    #Role
+    You are an interface inspection agent.
+
+    #OBJECTIVE:
+    Identify the first unanswered question in the survey currently
+    displayed in the user's browser.
+
+    #INSTRUCTIONS:
+    1. Inspect the currently visible browser page.
+    2. Identify the questions and their answer fields.
+    3. Determine whether each question has already been answered.
+    4. If the first unanswered question is visible, return it immediately.
+    5. Only scroll if no unanswered question is visible.
+    6. Do not repeatedly inspect the same page or element.
+    7. Do not interact with answer fields or submit any answers.
+    8. If you cannot identify an unanswered question, return null.
+
+    #OUTPUT:
+    Return ONLY a valid JSON object:
+
+    {
+        "question": "Question text",
+        "type": "multiple choice",
+        "options": ["Option 1", "Option 2"]
+    }
+
+    For free response questions, use:
+    {
+        "question": "Question text",
+        "type": "free response",
+        "options": null
+    }
+
+    If no unanswered question can be identified, return:
+    null
+
+    **Do not provide commentary or explanations.**
+"""}]
 
     while True:
         chat = client.chat.completions.create(

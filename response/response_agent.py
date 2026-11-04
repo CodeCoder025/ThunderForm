@@ -66,6 +66,8 @@ def respond_to_survey(question, api_key=os.getenv("openRouterAPIkey")):
 
         if tool_calls is None:
             info_given = [question, messages[-1].model_dump().get("content")]
+            if None in info_given or "None" in info_given:
+                return "Abort"
             update_profile(info_given, api_key)
             print(info_given)
             return str(info_given)

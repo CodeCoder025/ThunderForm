@@ -10,6 +10,7 @@ import os
 from response.response_agent import respond_to_survey
 from interface.browser_connection import browser_session
 from interface.interface_agent import extract_question, submit_answer
+from error_handling.premature_submission import handle_premature_submission
 
 async def main():
     api_key = os.getenv("openRouterAPIkey")
@@ -24,7 +25,8 @@ async def main():
             elif submission_code == 2:
                 break
             elif submission_code == 1:
-                raise Exception("%s is an invalid answer to %s"%(answer, question))
+                handle_premature_submission(api_key, session, profile_updated=True)
+                continue
         print("Survey Complete!")
         
 

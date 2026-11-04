@@ -11,8 +11,7 @@ This would repeat until the survey is complete, determined by the interface agen
 
 ### Yet to Do:
 
-- overcome current issue: if there are multiple questions on the same page (like in a google form, agent will sometimes click "proceed" even if not all the questions are filled up). Does this cause an error? --> need to think
-- need to have self-sufficient error-handling logic so that if agent is stupid it will just try again until it works, rather than returning an error
+- test that premature submission error handling logic actually works
 - overcome CAPTCHA
 - survey logger (what surveys have been completed, how many API tokens it took, payout if any, etc)
 - option to disable synthesis of hypothetical responses
