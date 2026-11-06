@@ -4,9 +4,22 @@ from openrouter import OpenRouter
 import os
 import ast
 import json
+from pathlib import Path
+from io import BytesIO #allows bytes-type files (e.g. images, PDFs) to be handled by memory (computer RAM) rather than having to be written into users hard drive
+import base64
+from PIL import Image
 
 from interface.browser_connection import execute_tool, format_tools_advertisement, format_tool_output
 
+async def screenshot_captcha(session):
+    print("Screenshot function called")
+    captcha_path = Path(__file__).resolve().parent / "CAPTCHA.jpg"
+    captcha_path = captcha_path.as_posix() #converts backslashes to forward slashes, more compatible with some functions
+
+    tool_output = await session.call_tool("browser", 
+                                          {"commands": f'screenshot --path "{captcha_path}"'}
+    )
+    print(tool_output)
 async def identify_captcha(ai_key, session):
     client = OpenAI(api_key = ai_key, base_url = "https://openrouter.ai/api/v1")
     
@@ -16,7 +29,6 @@ async def identify_captcha(ai_key, session):
 
     #OBJECTIVE:
     By either taking and interpreting a browser screenshot, or inspecting the DOM of the webpage, you are to identify the type of captcha challenge present, if any.
-    You are to then save a browser screenshot of the Captcha challenge as .jpg file in this directory, and name it CAPTCHA.jpg
 
     #INSTRUCTIONS:
     1. Inspect the currently visible browser page.
@@ -30,7 +42,7 @@ async def identify_captcha(ai_key, session):
 
     #OUTPUT:
     Return ONLY a valid JSON object:
-    {"return code":int}
+    {"return_code":int}
     **Do not provide commentary or explanations.**
 """}]
     tools_available = format_tools_advertisement((await session.list_tools()).tools)
@@ -49,12 +61,16 @@ async def identify_captcha(ai_key, session):
         messages.append(chat.choices[0].message)
         if (not tool_calls or len(tool_calls) == 0):
             try:
-                model_output = int(json.loads(chat.choices[0].message.content).get("return code"))
+                model_output = int(json.loads(chat.choices[0].message.content).get("return_code"))
             except:
                 messages.append({"role":"user","content":"""Output must be in JSON format of {"return_code":int} only!"""})
                 print("CAPTCHA Identifier Agent Failed to Format. Retrying...")
+                print(chat.choices[0].message.content)
                 continue
-            return model_output
+
+            if model_output != 0:
+                await screenshot_captcha(session)
+                return model_output
         else:
             tool_name = tool_calls[0].function.name
             print("CAPTCHA Identifier Agent Called Tool: %s"%tool_name)
@@ -64,11 +80,13 @@ async def identify_captcha(ai_key, session):
 
 async def solve_captcha(captcha_key, ai_key, session, captcha_type):
     solver = TwoCaptcha(captcha_key)
-    path_to_captcha = "error_handling/CAPTCHA.jpg"
+    captcha_path = Path(__file__).resolve().parent / "CAPTCHA.jpg"
+    captcha_path = captcha_path.as_posix()
+    
     if captcha_type == 1:
-        result = solver.normal(path_to_captcha) #returns text
+        result = solver.normal(str(captcha_path)) #returns text
     elif captcha_type == 2:
-        result = solver.grid(path_to_captcha) #returns numbers of boxes
+        result = solver.grid(str(captcha_path)) #returns numbers of boxes
 
     client = OpenAI(api_key = ai_key, base_url = "https://openrouter.ai/api/v1")
         
@@ -90,7 +108,7 @@ async def solve_captcha(captcha_key, ai_key, session, captcha_type):
 
     #OUTPUT:
     Return ONLY a valid JSON object:
-    {"return code":int}
+    {"return_code":int}
     **Do not provide commentary or explanations.**
 """},
     {"role":"user","content":result}]
@@ -110,7 +128,7 @@ async def solve_captcha(captcha_key, ai_key, session, captcha_type):
         messages.append(chat.choices[0].message)
         if (not tool_calls or len(tool_calls) == 0):
             try:
-                model_output = int(json.loads(chat.choices[0].message.content).get("return code"))
+                model_output = int(json.loads(chat.choices[0].message.content).get("return_code"))
             except:
                 messages.append({"role":"user","content":"""Output must be in JSON format of {"return_code":int} only!"""})
                 print("CAPTCHA Solver Agent Failed to Format. Retrying...")

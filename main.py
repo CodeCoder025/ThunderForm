@@ -16,6 +16,9 @@ from error_handling.CAPTCHA_solve import identify_captcha, solve_captcha
 async def main():
     ai_api_key = os.getenv("openRouterAPIkey")
     captcha_api_key = os.getenv("captchaAPIkey")
+    print("OpenRouter key loaded:", bool(ai_api_key))
+    print("2Captcha key loaded:", bool(captcha_api_key))
+    
     async with browser_session() as session:
         survey_status = None
         exception_counter = 0

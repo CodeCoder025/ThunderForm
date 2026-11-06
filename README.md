@@ -11,7 +11,8 @@ This would repeat until the survey is complete, determined by the interface agen
 
 ### Yet to Do:
 
-- overcome CAPTCHA
+- Debug CAPTCHA handling (currently code is ok, but 2captcha returns with "captcha unsolvable" message)
+- increase robustness of suitable CAPTCHA challenges (solver bot should be given different message based on CAPTCHA type detected, rather than being given one massive prompt with instructions for every captcha type)
 - completing multiple surveys in a single run (can navigate between a survey selection menu)
 - survey logger (what surveys have been completed, how many API tokens it took, payout if any, etc)
 - option to disable synthesis of hypothetical responses
@@ -20,7 +21,7 @@ This would repeat until the survey is complete, determined by the interface agen
 
 ### Dependencies
 
-2Captcha, BrowserMCP, OpenRouter, OpenAI are necessary for this script to run as intended. An OpenRouter API key with access to Deepseek V4 Flash will be necessary. As this is a premium model, credits will be needed (user can expect a cost of less than one cent per five questions, though subject to question complexity)
+2Captcha, Pillow, BrowserMCP, OpenRouter, OpenAI are necessary for this script to run as intended. An OpenRouter API key with access to Deepseek V4 Flash will be necessary. As this is a premium model, credits will be needed (user can expect a cost of less than one cent per five questions, though subject to question complexity)
 
 ### Risks
 
