@@ -23,6 +23,7 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
     3. Fill in the answer.
     4. Check whether other questions remain unanswered.
     5. Only navigate when the page is complete.
+    6. Exit and output the return code.
 
     ## Critical Rules
     - NEVER navigate while unanswered questions remain.
@@ -32,10 +33,11 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
     ## Return Codes
     - 0: Successfully filled in.
     - 1: Unable to fill in.
-    - 2: Entire survey completed and submitted.
+    - 2: Entire survey completed and submitted, with no further pages to navigate to.
+    You are to infer, based on context and DOM of the webpage, when to return with code 2. For example, if the next navigational button available is a "submit" button or "finish" button instead of a "proceed" button, you can click it an return code 2.
 
     ## Output Format
-    Return ONLY valid JSON:
+    Return ONLY valid JSON, and nothing else:
 
     ```json
     {"return code":"0"}
@@ -47,7 +49,7 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
 
     while True:
         chat = client.chat.completions.create(
-            model = "openai/gpt-oss-120b",
+            model = "deepseek/deepseek-v4-flash",
             messages = messages,
             tools=format_tools_advertisement((await session.list_tools()).tools),
             tool_choice = "auto"
@@ -62,11 +64,17 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
             output = chat.choices[0].message.content
             try:
                 return_code = int(json.loads(output)["return code"])
+                return return_code
             except:
+                if output.startswith("```json") and output.endswith("```"):
+                    _, back = output.split("n")
+                    middle, _ = back.split("`")
+                    return_code = int(ast.literal_eval(middle).get("return code"))
+                    return return_code
                 messages.append({"role":"user","content":"""Ouptut must be in JSON format of {"return code":str} only"""})
+                print(output)
                 print("Answer Submission Agent Failed to Format. Retrying...")
-                return 1
-
+                continue
         else:
             tool_name = tool_calls[0].function.name
             print("Answer Submission (Interface) Agent Called Tool: %s"%tool_name)
@@ -82,7 +90,7 @@ async def extract_question(api_key, session):
     You are an interface inspection agent.
 
     #OBJECTIVE:
-    Identify the first unanswered question in the survey currently
+    Identify the **first unanswered question** in the survey currently
     displayed in the user's browser.
 
     #INSTRUCTIONS:
@@ -119,7 +127,7 @@ async def extract_question(api_key, session):
 
     while True:
         chat = client.chat.completions.create(
-            model = "openai/gpt-oss-120b",
+            model = "deepseek/deepseek-v4-flash",
             messages = messages,
             tools=format_tools_advertisement((await session.list_tools()).tools),
             tool_choice="auto"
