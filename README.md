@@ -11,12 +11,11 @@ This would repeat until the survey is complete, determined by the interface agen
 
 ### Yet to Do:
 
-- test that premature submission error handling logic actually works
 - overcome CAPTCHA
+- completing multiple surveys in a single run (can navigate between a survey selection menu)
 - survey logger (what surveys have been completed, how many API tokens it took, payout if any, etc)
 - option to disable synthesis of hypothetical responses
 - nice, clean user interface
-- completing multiple surveys in a single run (can navigate between a survey selection menu)
 - AI token usage efficiency (send all questions then receive all answers and fill one by one, rather than doing the entire workflow N times)
 
 ### Dependencies

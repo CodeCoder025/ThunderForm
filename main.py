@@ -1,4 +1,4 @@
-#environment variable names are tavilyAPIkey and openRouterAPIkey
+#environment variable names are captchaAPIkey and openRouterAPIkey
 
 import sys
 sys.path.append("C:\\Users\\User\\WebSlave\\response")
@@ -10,27 +10,33 @@ from response.response_agent import respond_to_survey
 from interface.browser_connection import browser_session
 from interface.interface_agent import extract_question, submit_answer
 from error_handling.premature_submission import handle_premature_submission
+from error_handling.CAPTCHA_solve import identify_captcha, solve_captcha
 
 async def main():
-    api_key = os.getenv("openRouterAPIkey")
+    ai_api_key = os.getenv("openRouterAPIkey")
     async with browser_session() as session:
         survey_status = None
         exception_counter = 0
         while True:
             if exception_counter > 10:
                 return
+
+            captcha_code = identify_captcha()
+            if captcha_code:
+                solve_captcha(captcha_code)
+            
             try:
-                question = await extract_question(api_key, session)
+                question = await extract_question(ai_api_key, session)
             except:
                 exception_counter+=1
                 continue
             try:
-                answer = respond_to_survey(str(question), api_key)
+                answer = respond_to_survey(str(question), ai_api_key)
             except:
                 exception_counter+=1
                 continue
             try:
-                submission_code = int(await submit_answer(answer, session, api_key))
+                submission_code = int(await submit_answer(answer, session, ai_api_key))
             except:
                 exception_counter+=1
                 continue
@@ -40,7 +46,7 @@ async def main():
                 break
             elif submission_code == 1:
                 exception_counter+=1
-                await handle_premature_submission(api_key, session, profile_updated=True)
+                await handle_premature_submission(ai_api_key, session, profile_updated=True)
                 continue
         print("Survey Complete!")
         
