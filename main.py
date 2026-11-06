@@ -4,6 +4,7 @@ import sys
 sys.path.append("C:\\Users\\User\\WebSlave\\response")
 sys.path.append("C:\\Users\\User\\WebSlave\\interface")
 import asyncio
+import json
 
 import os
 from response.response_agent import respond_to_survey
@@ -14,6 +15,7 @@ from error_handling.CAPTCHA_solve import identify_captcha, solve_captcha
 
 async def main():
     ai_api_key = os.getenv("openRouterAPIkey")
+    captcha_api_key = os.getenv("captchaAPIkey")
     async with browser_session() as session:
         survey_status = None
         exception_counter = 0
@@ -21,10 +23,14 @@ async def main():
             if exception_counter > 10:
                 return
 
-            captcha_code = identify_captcha()
-            if captcha_code:
-                solve_captcha(captcha_code)
-            
+            captcha_code = await identify_captcha(ai_api_key, session)
+
+            if captcha_code != 0:
+                captcha_success_code = await solve_captcha(captcha_api_key, ai_api_key, session, captcha_code)
+                if captcha_success_code == 1:
+                    captcha_success_code = await solve_captcha(captcha_api_key, ai_api_key, session, captcha_code)
+                    if captcha_success_code == 1:
+                        continue #Since captcha solving is expensive ill only reactivate the loop once the solver fails twice
             try:
                 question = await extract_question(ai_api_key, session)
             except:

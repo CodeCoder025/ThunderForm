@@ -20,7 +20,7 @@ This would repeat until the survey is complete, determined by the interface agen
 
 ### Dependencies
 
-BrowserMCP, OpenRouter, OpenAI are necessary for this script to run as intended. An OpenRouter API key with access to Deepseek V4 Flash will be necessary. As this is a premium model, credits will be needed (user can expect a cost of less than one cent per five questions, though subject to question complexity)
+2Captcha, BrowserMCP, OpenRouter, OpenAI are necessary for this script to run as intended. An OpenRouter API key with access to Deepseek V4 Flash will be necessary. As this is a premium model, credits will be needed (user can expect a cost of less than one cent per five questions, though subject to question complexity)
 
 ### Risks
 
@@ -28,4 +28,4 @@ Please note that this software gives the agent control over your browser. By run
 
 ### Violation of Terms of Use
 
-Many survey or form-hosting software prohibit the use of agents or autonomous algorithms to fill in surveys. Please ensure that the use of WebSlave does not violate the terms of use of any third-party software. This tool is built to be used in good faith.
+Many survey or form-hosting software prohibit the use of agents or autonomous algorithms to fill in surveys. Please ensure that the use of WebSlave does not violate the terms of use of any third-party software. This tool is built to be used in good faith, as well as for learning purposes ONLY.
