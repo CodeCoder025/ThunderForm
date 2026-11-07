@@ -84,9 +84,13 @@ async def solve_captcha(captcha_key, ai_key, session, captcha_type):
     captcha_path = captcha_path.as_posix()
     
     if captcha_type == 1:
-        result = solver.normal(str(captcha_path)) #returns text
+        response = solver.normal(str(captcha_path)) #returns text
+        result = response.get("code") 
     elif captcha_type == 2:
-        result = solver.grid(str(captcha_path)) #returns numbers of boxes
+        response = solver.grid(str(captcha_path)) #returns numbers of boxes
+        solution = response.get("solution").get("click")
+        result = str(solution)
+
 
     client = OpenAI(api_key = ai_key, base_url = "https://openrouter.ai/api/v1")
         
