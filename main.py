@@ -11,7 +11,7 @@ from response.response_agent import respond_to_survey
 from interface.browser_connection import browser_session
 from interface.interface_agent import extract_question, submit_answer
 from error_handling.premature_submission import handle_premature_submission
-from error_handling.CAPTCHA_solve import identify_captcha, solve_captcha
+from error_handling.CAPTCHA_solve import identify_captcha, solve_captcha_auto
 
 async def main():
     ai_api_key = os.getenv("openRouterAPIkey")
@@ -29,9 +29,9 @@ async def main():
             captcha_code = await identify_captcha(ai_api_key, session)
 
             if captcha_code != 0:
-                captcha_success_code = await solve_captcha(captcha_api_key, ai_api_key, session, captcha_code)
+                captcha_success_code = await solve_captcha_auto(captcha_api_key, ai_api_key, session, captcha_code)
                 if captcha_success_code == 1:
-                    captcha_success_code = await solve_captcha(captcha_api_key, ai_api_key, session, captcha_code)
+                    captcha_success_code = await solve_captcha_auto(captcha_api_key, ai_api_key, session, captcha_code)
                     if captcha_success_code == 1:
                         continue #Since captcha solving is expensive ill only reactivate the loop once the solver fails twice
             try:

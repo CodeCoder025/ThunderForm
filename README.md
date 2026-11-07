@@ -11,6 +11,8 @@ This would repeat until the survey is complete, determined by the interface agen
 
 ### Yet to Do:
 
+(think: Is it more feasible to create drag-and-drop CAPTCHA solver function pythonically rather than using a third party service)
+
 - increase robustness of suitable CAPTCHA challenges, to include drag and drop captcha, etc (solver bot should be given different message based on CAPTCHA type detected, rather than being given one massive prompt with instructions for every captcha type)
 - completing multiple surveys in a single run (can navigate between a survey selection menu, or between captcha completion and survey start. This would essentially be the orchestrator agent)
 - option to disable synthesis of hypothetical responses

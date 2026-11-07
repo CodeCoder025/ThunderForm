@@ -39,6 +39,7 @@ async def identify_captcha(ai_key, session):
     - 0: No CAPTCHA challenge available.
     - 1: Normal Captcha (Distorted text on image)
     - 2: Grid Captcha (Involves clicking boxes in a grid)
+    - 3: Drag-and-Drop Captcha (Involves item to be dragged into box)
 
     #OUTPUT:
     Return ONLY a valid JSON object:
@@ -78,23 +79,105 @@ async def identify_captcha(ai_key, session):
             output = await execute_tool(session, tool_name, arguments)
             messages.append({"role":"tool","tool_call_id":tool_calls[0].id, "content":output})
 
-async def solve_captcha(captcha_key, ai_key, session, captcha_type):
+async def solve_drag_drop_captcha(api_key): #need toolos: readfile (bytes)
+    client = OpenAI(api_key = api_key, base_url = "https://openrouter.ai/api/v1")
+
+    messages = [{"role":"system","content":"""
+    # Role
+    You are a drag-and-drop CAPTCHA solver agent.
+
+    # Objective
+    Identify the correct solution to a drag-and-drop CAPTCHA challenge presented.
+
+    # Workflow
+    1. Inspect the file named CAPTCHA.jpg, which is a screenshot of the CAPTCHA challenge.
+    2. Understand the demands of the drag-and-drop CAPTCHA challenge (e.g. dragging the given number into the box, dragging the correct shape to fit into the image, etc)
+    3. Identify the correct element to drag.
+    4. Identify the correct position to drop the element.
+    5. Return the coordinates of the position to drag from and drop to.
+
+    #Coordinate Units
+    Coordinate units are in CSS pixels relative to the viewport, NOT physical screen pixels. Origin (0,0): top left corner of browser viewport. 
+
+    # Output Format
+    Return ONLY valid JSON, and nothing else:
+
+    ```json
+    {"start_position":{"x":int, "y":int},
+     "end_position":{"x":int, "y":int}}
+    """}]
+
+    while True:
+        chat = client.chat.completions.create(
+            model = "deepseek/deepseek-v4-flash",
+            messages = messages,
+            tools= {"type":"function",
+                    "function":{
+                        "name":"ReadFile",
+                        "description":"Read the data stored in a file (bytes or text, depending on file type)",
+                        "parameters":{
+                            "required":["file_path"],
+                            "type":"object",
+                            "properties":{
+                                "file_path":{
+                                    "type":"string",
+                                    "description":"Path of file to read"
+                                }
+                            }
+                        }
+                    }}
+        )
+
+        if not chat.choices or len(chat.choices) == 0:
+            raise RuntimeError("No Response Given by Drag-Drop Agent!")
+
+        tool_calls = chat.choices[0].message.tool_calls
+        messages.append(chat.choices[0].message)
+        if not tool_calls or len(tool_calls) == 0:
+            output = chat.choices[0].message.content
+            try:
+                solution = json.loads(output)
+                return solution
+            except:
+                if output.startswith("```json") and output.endswith("```"):
+                    _, back = output.split("n")
+                    middle, _ = back.split("`")
+                    return str(middle)
+                
+                messages.append({"role":"user","content":"""Ouptut must be in JSON format of {"start_position":{"x":int, "y":int},
+                     "end_position":{"x":int, "y":int}} only"""})
+                print(output)
+                print("Drag-Drop Agent Failed to Format. Retrying...")
+                continue
+        else:
+            tool_name = tool_calls[0].function.name
+            print("Answer Submission (Interface) Agent Called Tool: %s"%tool_name)
+            arguments = json.loads(tool_calls[0].function.arguments)
+            if tool_name == "ReadFile":
+                pass #CRITICAL: TO EDIT
+
+async def solve_captcha_auto(captcha_key, ai_key, session, captcha_type):
     solver = TwoCaptcha(captcha_key)
     captcha_path = Path(__file__).resolve().parent / "CAPTCHA.jpg"
     captcha_path = captcha_path.as_posix()
     
     if captcha_type == 1:
         response = solver.normal(str(captcha_path)) #returns text
+        specific_instruction = "For a normal captcha (scrambled/messy text), a string of the text will be given as the solution."
         result = response.get("code") 
     elif captcha_type == 2:
         response = solver.grid(str(captcha_path)) #returns numbers of boxes
         solution = response.get("solution").get("click")
+        specific_instruction = "For grid captcha (requires selection of boxes in a grid), numbers representing the boxes to select will be given to you."
         result = str(solution)
-
+    elif captcha_type == 3:
+        response = solve_drag_drop_captcha(ai_key, session)
+        specific_instruction = """For drag and drop captcha (requires dragging some element into a box), {"start_position":{"x":int, "y":int},
+                     "end_position":{"x":int, "y":int}} will be given to you. You are to drag the item from the start coordinate to the end coordinate of the user's screen. Start and end coordinates are in terms of CSS pixels relative to the browser viewport of the user, with the origin (0,0) being the top left corner of the user's browser window."""
 
     client = OpenAI(api_key = ai_key, base_url = "https://openrouter.ai/api/v1")
         
-    messages = [{"role":"system","content":"""
+    messages = [{"role":"system","content":f"""
     #Role
     You are a captcha executor agent.
 
@@ -103,9 +186,9 @@ async def solve_captcha(captcha_key, ai_key, session, captcha_type):
 
     #Workflow:
     1. Examine the user's browser, and the captcha solution given to you.
-    2. Interact with the captcha challenge using the solution given. For a normal captcha (scrambled/messy text), a string of the text will be given as the solution. For grid captcha (requires selection of boxes in a grid), numbers representing the boxes to select will be given to you.
-    3. Inspect browser to see if captcha is successful, and give the corresponding return code.
-
+    2. Interact with the captcha challenge using the solution given. {specific_instruction}
+    3. Exit and return a code based on whether or not the CAPTCHA has been successfully solved.
+    
     #RETRUN CODES:
     - 0: CAPTCHA solved successfully
     - 1: CAPTCHA solve failed
