@@ -8,6 +8,8 @@ from pathlib import Path
 from io import BytesIO #allows bytes-type files (e.g. images, PDFs) to be handled by memory (computer RAM) rather than having to be written into users hard drive
 import base64
 from PIL import Image
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Literal #restricts a variable or a return value to be only specific values (otherwise raises error)
 
 from interface.browser_connection import execute_tool, format_tools_advertisement, format_tool_output
 
@@ -20,42 +22,57 @@ async def screenshot_captcha(session):
                                           {"commands": f'screenshot --path "{captcha_path}"'}
     )
     print(tool_output)
+
+class CaptchaIdentifierResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid") #reject any extra fields
+    classification: Literal[0,1,2,3] = Field(
+        description = "0 = No CAPTCHA challenge; 1 = Text CAPTCHA; 2 = Grid CAPTCHA; 3 = Drag-and-Drop CAPTCHA"
+    )
+
 async def identify_captcha(ai_key, session):
     client = OpenAI(api_key = ai_key, base_url = "https://openrouter.ai/api/v1")
     
     messages = [{"role":"system","content":"""
-    #Role
-    You are a captcha identifier agent.
+        You are a CAPTCHA identification agent.
 
-    #OBJECTIVE:
-    By either taking and interpreting a browser screenshot, or inspecting the DOM of the webpage, you are to identify the type of captcha challenge present, if any.
+        TASK:
+        Inspect the currently visible browser page using the available browser tools or screenshot.
 
-    #INSTRUCTIONS:
-    1. Inspect the currently visible browser page.
-    2. Identify if there is a CAPTCHA, and if so, what type of captcha is present.
-    3. Exit and output with a return code as below
+        Determine whether a CAPTCHA challenge is visibly present.
 
-    #CONSTRAINTS:
-    Do not scroll, click on any button, or navigate in any way. Your goal is only to identify any captcha in the currently visible browser page.
+        CLASSIFICATION:
+        - 0: No CAPTCHA challenge.
+        - 1: Text CAPTCHA (distorted text in an image).
+        - 2: Grid CAPTCHA (selecting tiles in a grid).
+        - 3: Drag-and-drop CAPTCHA.
 
-    #RETRUN CODES:
-    - 0: No CAPTCHA challenge available.
-    - 1: Normal Captcha (Distorted text on image)
-    - 2: Grid Captcha (Involves clicking boxes in a grid)
-    - 3: Drag-and-Drop Captcha (Involves item to be dragged into box)
+        RESTRICTIONS:
+        - Do not scroll, click, type, or navigate.
+        - Only inspect the currently visible page.
+        - Do not attempt to solve any CAPTCHA.
+        - If no CAPTCHA is detected, return code 0.
+        - If uncertain, return code 0.
 
-    #OUTPUT:
-    Return ONLY a valid JSON object:
-    {"return_code":int}
-    **Do not provide commentary or explanations.**
+        Follow the response schema provided by the API. Do not include side text or explainations outside the structured response
 """}]
+
+    schema = CaptchaIdentifierResponse()
+    
     tools_available = format_tools_advertisement((await session.list_tools()).tools)
     while True:
         chat = client.chat.completions.create(
             model = "openai/gpt-oss-120b",
             messages = messages,
             tools=tools_available,
-            tool_choice="auto"
+            tool_choice="auto",
+            response_format = {
+                "type":"json_schema",
+                "json_schema":{
+                    "name":"captcha_identification_response",
+                    "strict":True,
+                    "schema":schema
+                }
+            }
         )
 
         if not chat.choices or len(chat.choices) == 0:
@@ -64,23 +81,39 @@ async def identify_captcha(ai_key, session):
         tool_calls = chat.choices[0].message.tool_calls
         messages.append(chat.choices[0].message)
         if (not tool_calls or len(tool_calls) == 0):
+            output = chat.choices[0].message.content
+            exception_counter = 0
             try:
-                model_output = int(json.loads(chat.choices[0].message.content).get("return_code"))
+                result = CaptchaIdentifierResponse.model_validate_json(output)
+                model_output = result.classification
+            
             except:
-                messages.append({"role":"user","content":"""Output must be in JSON format of {"return_code":int} only!"""})
+                if exception_counter == 5:
+                    raise "CAPTCHA Identifier Agent returned with more than 5 exceptions!"
+                messages.append({"role":"user","content":"""Follow the output guideline given in the API schema!"""})
                 print("CAPTCHA Identifier Agent Failed to Format. Retrying...")
                 print(chat.choices[0].message.content)
+                exception_counter+=1
                 continue
 
             if model_output != 0:
                 await screenshot_captcha(session)
                 return model_output
+        
         else:
             tool_name = tool_calls[0].function.name
             print("CAPTCHA Identifier Agent Called Tool: %s"%tool_name)
             arguments = ast.literal_eval(tool_calls[0].function.arguments)
             output = await execute_tool(session, tool_name, arguments)
             messages.append({"role":"tool","tool_call_id":tool_calls[0].id, "content":output})
+
+class drag_drop_solver(BaseModel):
+
+    model_config = ConfigDict(extra="forbid")
+    start_x_position:int = Field(description="x-value of CSS coordinate position of intitial starting position of item to drag")
+    start_y_position:int = Field(description="y-value of CSS coordinate position of intitial starting position of item to drag")
+    end_x_position:int = Field(description="x-value of CSS coordinate position of final ending position of item to drag, i.e. coordinates to drag item to")
+    end_y_position:int = Field(description="y-value of CSS coordinate position of final ending position of item to drag, i.e. coordinates to drag item to")
 
 async def solve_drag_drop_captcha(api_key): #need toolos: readfile (bytes)
     client = OpenAI(api_key = api_key, base_url = "https://openrouter.ai/api/v1")
@@ -103,12 +136,11 @@ async def solve_drag_drop_captcha(api_key): #need toolos: readfile (bytes)
     Coordinate units are in CSS pixels relative to the viewport, NOT physical screen pixels. Origin (0,0): top left corner of browser viewport. 
 
     # Output Format
-    Return ONLY valid JSON, and nothing else:
-
-    ```json
-    {"start_position":{"x":int, "y":int},
-     "end_position":{"x":int, "y":int}}
+    Return ONLY one valid JSON object, based on the format of the JSON schema given to you in the API call.
+    Note that the return format takes in each the x and y coordinate in separate fields, for both the start and end position.
     """}]
+
+    schema = drag_drop_solver()
 
     while True:
         chat = client.chat.completions.create(
@@ -128,7 +160,15 @@ async def solve_drag_drop_captcha(api_key): #need toolos: readfile (bytes)
                                 }
                             }
                         }
-                    }}
+                    }},
+            response_format={
+                "type":"json_schema",
+                "json_schema":{
+                    "name":"drag_and_drop_coordinates",
+                    "strict":True,
+                    "schema":schema
+                }
+            }
         )
 
         if not chat.choices or len(chat.choices) == 0:
@@ -139,19 +179,23 @@ async def solve_drag_drop_captcha(api_key): #need toolos: readfile (bytes)
         if not tool_calls or len(tool_calls) == 0:
             output = chat.choices[0].message.content
             try:
-                solution = json.loads(output)
-                return solution
+                response = drag_drop_solver.model_validate_json(output)
+                solution = {"start_position":{"x":response.start_x_position,
+                                                "y":response.start_y_position},
+                            "end_position":{"x":response.end_x_position,
+                                            "y":response.end_y_position}}
+                return json.dumps(solution)
             except:
                 if output.startswith("```json") and output.endswith("```"):
                     _, back = output.split("n")
                     middle, _ = back.split("`")
                     return str(middle)
                 
-                messages.append({"role":"user","content":f"""Ouptut must be in JSON format of {{"start_position":{{"x":int, "y":int}},
-                     "end_position":{{"x":int, "y":int}}}} only, previous output was of type {type(output)}"""})
+                messages.append({"role":"user","content":f"""Ouptut must be in JSON format of {schema}"""})
                 print(output)
                 print("Drag-Drop Agent Failed to Format. Retrying...")
                 continue
+
         else:
             tool_name = tool_calls[0].function.name
             print("Answer Submission (Interface) Agent Called Tool: %s"%tool_name)
@@ -199,8 +243,11 @@ async def solve_captcha_auto(captcha_key, ai_key, session, captcha_type):
     - 1: CAPTCHA solve failed
 
     #OUTPUT:
-    Return ONLY a valid JSON object:
-    {{"return_code":int}}
+    Return ONLY a valid JSON object.
+    No Markdown, code fences, explanations, or additional text.
+    Return only one of the two outputs below:
+    {{"return_code":0}} or
+    {{"return_code":1}}
     **Do not provide commentary or explanations.**
 """},
     {"role":"user","content":result}]

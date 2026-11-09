@@ -1,6 +1,6 @@
 # ThunderForm
 
-WebSlave is an **autonomous survey completion and form filling agent** which helsp users fill up long, tedious forms with minimum human intervention. The form is filled using information provided by the user in the _my_profile.txt_ file (under the _response_ folder), or hypothetically synthesised by the agent.
+ThunderForm is an **autonomous survey completion and form filling agent** which helsp users fill up long, tedious forms with minimum human intervention. The form is filled using information provided by the user in the _my_profile.txt_ file (under the _response_ folder), or hypothetically synthesised by the agent.
 
 ## Workflow
 
@@ -11,7 +11,9 @@ This would repeat until the survey is complete, determined by the interface agen
 
 ### Yet to Do:
 
-- test and (if needed) debug drag-and-drop CAPTCHA function
+IMPORTANT: BEFORE IMPLEMENTING FURTHER JSON ENFORCING, MAKE SURE METHOD OF ENFORCEMENT FOR FIRST 2 AGENTS ARE CORRECT
+
+- Use pydantic to implement JSON schema enforcement so model stupidity wont be detrimental (done for drag and drop, captcha identifier. Not yet for 2captcha solver and other agents)
 - completing multiple surveys in a single run (can navigate between a survey selection menu, or between captcha completion and survey start. This would essentially be the orchestrator agent)
 - (MASSIVE UPDATE): let agent live on a cloud server or constantly-running VM, and connect it to a Telegram bot. Add feature such that agent can complete form / survey on user's behalf through a link being sent to it through telegram
 - option to disable synthesis of hypothetical responses
@@ -19,7 +21,7 @@ This would repeat until the survey is complete, determined by the interface agen
 
 ### Dependencies
 
-2Captcha, Pillow, BrowserMCP, OpenRouter, OpenAI are necessary for this script to run as intended. An OpenRouter API key with access to Deepseek V4 Flash will be necessary. As this is a premium model, credits will be needed (user can expect a cost of less than one cent per five questions, though subject to question complexity)
+2Captcha, Pillow, BrowserMCP, OpenRouter, OpenAI, and Pydantic are necessary for this script to run as intended. An OpenRouter API key with access to Deepseek V4 Flash will be necessary. As this is a premium model, credits will be needed (user can expect a cost of less than one cent per five questions, though subject to question complexity)
 
 ### Risks
 
@@ -27,4 +29,4 @@ Please note that this software gives the agent control over your browser. By run
 
 ### Violation of Terms of Use
 
-Many survey or form-hosting software prohibit the use of agents or autonomous algorithms to fill in surveys. Please ensure that the use of WebSlave does not violate the terms of use of any third-party software. This tool is built to be used in good faith, as well as for learning purposes ONLY.
+Many survey or form-hosting software prohibit the use of agents or autonomous algorithms to fill in surveys. Please ensure that the use of ThunderForm does not violate the terms of use of any third-party software. This tool is built to be used in good faith, as well as for learning purposes ONLY.
