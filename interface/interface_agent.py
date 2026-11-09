@@ -71,7 +71,7 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
                     middle, _ = back.split("`")
                     return_code = int(ast.literal_eval(middle).get("return code"))
                     return return_code
-                messages.append({"role":"user","content":"""Ouptut must be in JSON format of {"return code":str} only"""})
+                messages.append({"role":"user","content":f"""Ouptut must be in JSON format of {{"return code":str}} only, previous output was of type {type(output)}"""})
                 print(output)
                 print("Answer Submission Agent Failed to Format. Retrying...")
                 continue
@@ -142,7 +142,7 @@ async def extract_question(api_key, session):
             try:
                 model_output = json.loads(chat.choices[0].message.content)
             except:
-                messages.append({"role":"user","content":"""Output must be in JSON format of {"question":str, "type":str,"options": list or null} only!"""})
+                messages.append({"role":"user","content":f"""Output must be in JSON format of {{"question":str, "type":str,"options": list or null}} only, previous output was of type {type(model_output)}!"""})
                 print("Question Extractor Agent Failed to Format. Retrying...")
                 continue
             return model_output

@@ -1,8 +1,8 @@
 #environment variable names are captchaAPIkey and openRouterAPIkey
 
 import sys
-sys.path.append("C:\\Users\\User\\WebSlave\\response")
-sys.path.append("C:\\Users\\User\\WebSlave\\interface")
+sys.path.append("C:\\Users\\User\\ThunderForm\\response")
+sys.path.append("C:\\Users\\User\\ThunderForm\\interface")
 import asyncio
 import json
 

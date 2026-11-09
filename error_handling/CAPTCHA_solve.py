@@ -35,6 +35,9 @@ async def identify_captcha(ai_key, session):
     2. Identify if there is a CAPTCHA, and if so, what type of captcha is present.
     3. Exit and output with a return code as below
 
+    #CONSTRAINTS:
+    Do not scroll, click on any button, or navigate in any way. Your goal is only to identify any captcha in the currently visible browser page.
+
     #RETRUN CODES:
     - 0: No CAPTCHA challenge available.
     - 1: Normal Captcha (Distorted text on image)
@@ -49,7 +52,7 @@ async def identify_captcha(ai_key, session):
     tools_available = format_tools_advertisement((await session.list_tools()).tools)
     while True:
         chat = client.chat.completions.create(
-            model = "deepseek/deepseek-v4-flash",
+            model = "openai/gpt-oss-120b",
             messages = messages,
             tools=tools_available,
             tool_choice="auto"
@@ -109,7 +112,7 @@ async def solve_drag_drop_captcha(api_key): #need toolos: readfile (bytes)
 
     while True:
         chat = client.chat.completions.create(
-            model = "deepseek/deepseek-v4-flash",
+            model = "openai/gpt-oss-120b",
             messages = messages,
             tools= {"type":"function",
                     "function":{
@@ -144,8 +147,8 @@ async def solve_drag_drop_captcha(api_key): #need toolos: readfile (bytes)
                     middle, _ = back.split("`")
                     return str(middle)
                 
-                messages.append({"role":"user","content":"""Ouptut must be in JSON format of {"start_position":{"x":int, "y":int},
-                     "end_position":{"x":int, "y":int}} only"""})
+                messages.append({"role":"user","content":f"""Ouptut must be in JSON format of {{"start_position":{{"x":int, "y":int}},
+                     "end_position":{{"x":int, "y":int}}}} only, previous output was of type {type(output)}"""})
                 print(output)
                 print("Drag-Drop Agent Failed to Format. Retrying...")
                 continue
@@ -154,7 +157,9 @@ async def solve_drag_drop_captcha(api_key): #need toolos: readfile (bytes)
             print("Answer Submission (Interface) Agent Called Tool: %s"%tool_name)
             arguments = json.loads(tool_calls[0].function.arguments)
             if tool_name == "ReadFile":
-                pass #CRITICAL: TO EDIT
+                with open(arguments["file_path"], "r") as image_file:
+                    content = image_file.read()
+                messages.append({"role":"tool","tool_call_id":tool_calls[0].id, "content":content})
 
 async def solve_captcha_auto(captcha_key, ai_key, session, captcha_type):
     solver = TwoCaptcha(captcha_key)
@@ -195,14 +200,14 @@ async def solve_captcha_auto(captcha_key, ai_key, session, captcha_type):
 
     #OUTPUT:
     Return ONLY a valid JSON object:
-    {"return_code":int}
+    {{"return_code":int}}
     **Do not provide commentary or explanations.**
 """},
     {"role":"user","content":result}]
     tools_available = format_tools_advertisement((await session.list_tools()).tools)
     while True:
         chat = client.chat.completions.create(
-            model = "deepseek/deepseek-v4-flash",
+            model = "openai/gpt-oss-120b",
             messages = messages,
             tools=tools_available,
             tool_choice="auto"
@@ -217,7 +222,7 @@ async def solve_captcha_auto(captcha_key, ai_key, session, captcha_type):
             try:
                 model_output = int(json.loads(chat.choices[0].message.content).get("return_code"))
             except:
-                messages.append({"role":"user","content":"""Output must be in JSON format of {"return_code":int} only!"""})
+                messages.append({"role":"user","content":f"""Output must be in JSON format of {{"return_code":int}} only, previous output was of type {type(model_output)}!"""})
                 print("CAPTCHA Solver Agent Failed to Format. Retrying...")
                 continue
 
