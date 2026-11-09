@@ -11,9 +11,7 @@ This would repeat until the survey is complete, determined by the interface agen
 
 ### Yet to Do:
 
-IMPORTANT: BEFORE IMPLEMENTING FURTHER JSON ENFORCING, MAKE SURE METHOD OF ENFORCEMENT FOR FIRST 2 AGENTS ARE CORRECT
-
-- Use pydantic to implement JSON schema enforcement so model stupidity wont be detrimental (done for drag and drop, captcha identifier. Not yet for 2captcha solver and other agents)
+- Use pydantic to implement JSON schema enforcement so model stupidity wont be detrimental (done for captcha agents though yet to debug --> https://chatgpt.com/s/t_6af1d89337688191b16a82aacf3c85f9 , debug guide. yet to do for response, interface agents.)
 - completing multiple surveys in a single run (can navigate between a survey selection menu, or between captcha completion and survey start. This would essentially be the orchestrator agent)
 - (MASSIVE UPDATE): let agent live on a cloud server or constantly-running VM, and connect it to a Telegram bot. Add feature such that agent can complete form / survey on user's behalf through a link being sent to it through telegram
 - option to disable synthesis of hypothetical responses

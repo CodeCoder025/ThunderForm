@@ -56,9 +56,10 @@ async def identify_captcha(ai_key, session):
         Follow the response schema provided by the API. Do not include side text or explainations outside the structured response
 """}]
 
-    schema = CaptchaIdentifierResponse()
+    schema = CaptchaIdentifierResponse.model_json_schema()
     
     tools_available = format_tools_advertisement((await session.list_tools()).tools)
+    exception_counter = 0
     while True:
         chat = client.chat.completions.create(
             model = "openai/gpt-oss-120b",
@@ -82,14 +83,19 @@ async def identify_captcha(ai_key, session):
         messages.append(chat.choices[0].message)
         if (not tool_calls or len(tool_calls) == 0):
             output = chat.choices[0].message.content
-            exception_counter = 0
             try:
                 result = CaptchaIdentifierResponse.model_validate_json(output)
-                model_output = result.classification
+                model_output = result.model_dump().get("classification")
+                
             
             except:
+                message = chat.choices[0].message
+
+                print("Finish reason:", chat.choices[0].finish_reason)
+                print("Refusal:", message.refusal)
+                print("Content:", repr(message.content))
                 if exception_counter == 5:
-                    raise "CAPTCHA Identifier Agent returned with more than 5 exceptions!"
+                    raise RuntimeError("CAPTCHA Identifier Agent returned with more than 5 exceptions!")
                 messages.append({"role":"user","content":"""Follow the output guideline given in the API schema!"""})
                 print("CAPTCHA Identifier Agent Failed to Format. Retrying...")
                 print(chat.choices[0].message.content)
@@ -101,11 +107,12 @@ async def identify_captcha(ai_key, session):
                 return model_output
         
         else:
-            tool_name = tool_calls[0].function.name
-            print("CAPTCHA Identifier Agent Called Tool: %s"%tool_name)
-            arguments = ast.literal_eval(tool_calls[0].function.arguments)
-            output = await execute_tool(session, tool_name, arguments)
-            messages.append({"role":"tool","tool_call_id":tool_calls[0].id, "content":output})
+            for tool_call in tool_calls:
+                tool_name = tool_call.function.name
+                print("CAPTCHA Identifier Agent Called Tool: %s"%tool_name)
+                arguments = ast.literal_eval(tool_call.function.arguments)
+                output = await execute_tool(session, tool_name, arguments)
+                messages.append({"role":"tool","tool_call_id":tool_call.id, "content":output})
 
 class drag_drop_solver(BaseModel):
 
@@ -140,13 +147,14 @@ async def solve_drag_drop_captcha(api_key): #need toolos: readfile (bytes)
     Note that the return format takes in each the x and y coordinate in separate fields, for both the start and end position.
     """}]
 
-    schema = drag_drop_solver()
+    schema = drag_drop_solver.model_json_schema()
+    exception_counter = 0
 
     while True:
         chat = client.chat.completions.create(
             model = "openai/gpt-oss-120b",
             messages = messages,
-            tools= {"type":"function",
+            tools= [{"type":"function",
                     "function":{
                         "name":"ReadFile",
                         "description":"Read the data stored in a file (bytes or text, depending on file type)",
@@ -160,7 +168,7 @@ async def solve_drag_drop_captcha(api_key): #need toolos: readfile (bytes)
                                 }
                             }
                         }
-                    }},
+                    }}],
             response_format={
                 "type":"json_schema",
                 "json_schema":{
@@ -186,24 +194,25 @@ async def solve_drag_drop_captcha(api_key): #need toolos: readfile (bytes)
                                             "y":response.end_y_position}}
                 return json.dumps(solution)
             except:
-                if output.startswith("```json") and output.endswith("```"):
-                    _, back = output.split("n")
-                    middle, _ = back.split("`")
-                    return str(middle)
-                
+                exception_counter += 1
+                if exception_counter == 6:
+                    raise RuntimeError("Drag-and-Drop Captcha Solver returned more than 5 exceptions")
                 messages.append({"role":"user","content":f"""Ouptut must be in JSON format of {schema}"""})
                 print(output)
                 print("Drag-Drop Agent Failed to Format. Retrying...")
                 continue
 
         else:
-            tool_name = tool_calls[0].function.name
-            print("Answer Submission (Interface) Agent Called Tool: %s"%tool_name)
-            arguments = json.loads(tool_calls[0].function.arguments)
-            if tool_name == "ReadFile":
-                with open(arguments["file_path"], "r") as image_file:
-                    content = image_file.read()
-                messages.append({"role":"tool","tool_call_id":tool_calls[0].id, "content":content})
+            for tool_call in tool_calls:
+                tool_name = tool_call.function.name
+                print("Answer Submission (Interface) Agent Called Tool: %s"%tool_name)
+                arguments = json.loads(tool_call.function.arguments)
+                if tool_name == "ReadFile":
+                    with open(arguments["file_path"], "rb") as image_file:
+                        content = image_file.read()
+                    messages.append({"role":"tool","tool_call_id":tool_call.id, "content":content})
+class captcha_solver_response(BaseModel):
+    return_code:Literal[0,1] = Field(description="0 = captcha solved successfully; 1 = captcha solving failed")
 
 async def solve_captcha_auto(captcha_key, ai_key, session, captcha_type):
     solver = TwoCaptcha(captcha_key)
@@ -223,7 +232,8 @@ async def solve_captcha_auto(captcha_key, ai_key, session, captcha_type):
         response = solve_drag_drop_captcha(ai_key, session)
         specific_instruction = """For drag and drop captcha (requires dragging some element into a box), {"start_position":{"x":int, "y":int},
                      "end_position":{"x":int, "y":int}} will be given to you. You are to drag the item from the start coordinate to the end coordinate of the user's screen. Start and end coordinates are in terms of CSS pixels relative to the browser viewport of the user, with the origin (0,0) being the top left corner of the user's browser window."""
-
+    
+    schema = captcha_solver_response.model_json_schema()
     client = OpenAI(api_key = ai_key, base_url = "https://openrouter.ai/api/v1")
         
     messages = [{"role":"system","content":f"""
@@ -243,21 +253,25 @@ async def solve_captcha_auto(captcha_key, ai_key, session, captcha_type):
     - 1: CAPTCHA solve failed
 
     #OUTPUT:
-    Return ONLY a valid JSON object.
-    No Markdown, code fences, explanations, or additional text.
-    Return only one of the two outputs below:
-    {{"return_code":0}} or
-    {{"return_code":1}}
-    **Do not provide commentary or explanations.**
+    Return ONLY a valid JSON object, in the form stated in the json schema given in the API call.
+    Do not add any commentary, supplementary text, or markdown fencing.**
 """},
     {"role":"user","content":result}]
+    
     tools_available = format_tools_advertisement((await session.list_tools()).tools)
+    exception_counter = 0
     while True:
         chat = client.chat.completions.create(
             model = "openai/gpt-oss-120b",
             messages = messages,
             tools=tools_available,
-            tool_choice="auto"
+            tool_choice="auto",
+            response_format = {"type":"json_schema",
+                               "json_schema":{
+                                   "name":"captcha_automatic_solver",
+                                   "strict":True,
+                                   "schema":schema
+                               }}
         )
 
         if not chat.choices or len(chat.choices) == 0:
@@ -267,16 +281,20 @@ async def solve_captcha_auto(captcha_key, ai_key, session, captcha_type):
         messages.append(chat.choices[0].message)
         if (not tool_calls or len(tool_calls) == 0):
             try:
-                model_output = int(json.loads(chat.choices[0].message.content).get("return_code"))
+                model_output = captcha_solver_response.model_validate_json(chat.choices[0].message.content).return_code
             except:
-                messages.append({"role":"user","content":f"""Output must be in JSON format of {{"return_code":int}} only, previous output was of type {type(model_output)}!"""})
+                exception_counter += 1
+                if exception_counter == 6:
+                    raise RuntimeError("Captcha Solver Agent returned with more than 5 exceptions")
+                messages.append({"role":"user","content":f"""Output must be in JSON schema format of {schema}!"""})
                 print("CAPTCHA Solver Agent Failed to Format. Retrying...")
                 continue
 
             return model_output
         else:
-            tool_name = tool_calls[0].function.name
-            print("CAPTCHA Solver Agent Called Tool: %s"%tool_name)
-            arguments = ast.literal_eval(tool_calls[0].function.arguments)
-            output = await execute_tool(session, tool_name, arguments)
-            messages.append({"role":"tool","tool_call_id":tool_calls[0].id, "content":output})
+            for tool_call in tool_calls:
+                tool_name = tool_call.function.name
+                print("CAPTCHA Solver Agent Called Tool: %s"%tool_name)
+                arguments = ast.literal_eval(tool_call.function.arguments)
+                output = await execute_tool(session, tool_name, arguments)
+                messages.append({"role":"tool","tool_call_id":tool_call.id, "content":output})
