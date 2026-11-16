@@ -31,7 +31,7 @@ class CaptchaIdentifierResponse(BaseModel):
 
 async def identify_captcha(ai_key, session):
     client = OpenAI(api_key = ai_key, base_url = "https://openrouter.ai/api/v1")
-    
+    tool_calls_left = 5
     messages = [{"role":"system","content":"""
         You are a CAPTCHA identification agent.
 
@@ -75,6 +75,11 @@ async def identify_captcha(ai_key, session):
                 }
             }
         )
+        choice = chat.choices[0]
+
+        print("Finish reason:", choice.finish_reason)
+        print("Tool calls:", len(choice.message.tool_calls or []))
+        print("Content:", choice.message.content)
 
         if not chat.choices or len(chat.choices) == 0:
             raise RuntimeError("No Response Given by CAPTCHA Identification Agent!")
@@ -104,15 +109,25 @@ async def identify_captcha(ai_key, session):
 
             if model_output != 0:
                 await screenshot_captcha(session)
-                return model_output
+            return model_output
         
         else:
             for tool_call in tool_calls:
+                if tool_calls_left == 0:
+                    raise RuntimeError("CAPTCHA Solver Agent has run out of tool calls")
                 tool_name = tool_call.function.name
                 print("CAPTCHA Identifier Agent Called Tool: %s"%tool_name)
                 arguments = ast.literal_eval(tool_call.function.arguments)
                 output = await execute_tool(session, tool_name, arguments)
                 messages.append({"role":"tool","tool_call_id":tool_call.id, "content":output})
+                tool_calls_left -= 1
+                messages.append({"role":"system","content":f"""
+        You have {tool_calls_left} tool-call rounds remaining.
+
+        You MUST complete your task within this budget.
+        Avoid unnecessary tool calls.
+        If you have sufficient information, immediately return
+        your classification using the required JSON schema."""})
 
 class drag_drop_solver(BaseModel):
 
@@ -218,7 +233,7 @@ async def solve_captcha_auto(captcha_key, ai_key, session, captcha_type):
     solver = TwoCaptcha(captcha_key)
     captcha_path = Path(__file__).resolve().parent / "CAPTCHA.jpg"
     captcha_path = captcha_path.as_posix()
-    
+    tool_calls_left = 5
     if captcha_type == 1:
         response = solver.normal(str(captcha_path)) #returns text
         specific_instruction = "For a normal captcha (scrambled/messy text), a string of the text will be given as the solution."
@@ -293,8 +308,17 @@ async def solve_captcha_auto(captcha_key, ai_key, session, captcha_type):
             return model_output
         else:
             for tool_call in tool_calls:
+                if tool_calls_left == 0:
+                    raise RuntimeError("CAPTCHA Solver Agent has run out of tool calls")
+                tool_calls_left -= 1
                 tool_name = tool_call.function.name
                 print("CAPTCHA Solver Agent Called Tool: %s"%tool_name)
                 arguments = ast.literal_eval(tool_call.function.arguments)
                 output = await execute_tool(session, tool_name, arguments)
                 messages.append({"role":"tool","tool_call_id":tool_call.id, "content":output})
+                messages.append({"role":"system","content":f"""
+        You have {tool_calls_left} tool-call rounds remaining.
+
+        You MUST complete your task within this budget.
+        Avoid unnecessary tool calls.
+        If you have completed the task, immediately return the return code using the required JSON schema."""})

@@ -5,7 +5,7 @@ sys.path.append("C:\\Users\\User\\ThunderForm\\response")
 sys.path.append("C:\\Users\\User\\ThunderForm\\interface")
 import asyncio
 import json
-
+import time
 import os
 from response.response_agent import respond_to_survey
 from interface.browser_connection import browser_session
@@ -22,8 +22,9 @@ async def main():
     async with browser_session() as session:
         survey_status = None
         exception_counter = 0
+        time.sleep(10) #this gives some time for mcp connection with browser to establish (so agent wont start running before browser connection is evens et up)
         while True:
-            if exception_counter > 10:
+            if exception_counter > 3:
                 return
 
             captcha_code = await identify_captcha(ai_api_key, session)
@@ -34,21 +35,11 @@ async def main():
                     captcha_success_code = await solve_captcha_auto(captcha_api_key, ai_api_key, session, captcha_code)
                     if captcha_success_code == 1:
                         continue #Since captcha solving is expensive ill only reactivate the loop once the solver fails twice
-            try:
-                question = await extract_question(ai_api_key, session)
-            except:
-                exception_counter+=1
-                continue
-            try:
-                answer = respond_to_survey(str(question), ai_api_key)
-            except:
-                exception_counter+=1
-                continue
-            try:
-                submission_code = int(await submit_answer(answer, session, ai_api_key))
-            except:
-                exception_counter+=1
-                continue
+
+            question = await extract_question(ai_api_key, session)
+            answer = respond_to_survey(str(question), ai_api_key)
+            submission_code = int(await submit_answer(answer, session, ai_api_key))
+
             if submission_code == 0:
                 continue
             elif submission_code == 2:
