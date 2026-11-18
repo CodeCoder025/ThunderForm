@@ -41,10 +41,10 @@ async def identify_captcha(ai_key, session):
         Determine whether a CAPTCHA challenge is visibly present.
 
         CLASSIFICATION:
-        - 0: No CAPTCHA challenge.
+        - 0: No CAPTCHA challenge or any challenge meant to prevent bots.
         - 1: Text CAPTCHA (distorted text in an image).
         - 2: Grid CAPTCHA (selecting tiles in a grid).
-        - 3: Drag-and-drop CAPTCHA.
+        - 3: Drag-and-drop CAPTCHA, or any visual drag-and-drop challenge (need not be official CAPTCHA)
 
         RESTRICTIONS:
         - Do not scroll, click, type, or navigate.
@@ -62,7 +62,7 @@ async def identify_captcha(ai_key, session):
     exception_counter = 0
     while True:
         chat = client.chat.completions.create(
-            model = "openai/gpt-oss-120b",
+            model = "deepseek/deepseek-v4-flash",
             messages = messages,
             tools=tools_available,
             tool_choice="auto",

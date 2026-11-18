@@ -4,6 +4,7 @@ from mcp.client.stdio import stdio_client
 
 import asyncio
 
+
 @asynccontextmanager
 async def browser_session():
     server = StdioServerParameters(
@@ -54,3 +55,16 @@ def format_tool_output(output):
 async def execute_tool(session, name, arguments):
     result = await session.call_tool(name, arguments)
     return format_tool_output(result)
+
+async def await_browser_connection(session, interval = 1):
+    while True:
+        try:
+            response = await session.call_tool(
+                "browser",
+                {"commands":"tab list"}
+            )
+            if not response.is_error:
+                return True
+        except Exception as e:
+            print("Browser failed to connect! %s" %e)
+        await asyncio.sleep(1)

@@ -7,8 +7,9 @@ import asyncio
 import json
 import time
 import os
+from pathlib import Path
 from response.response_agent import respond_to_survey
-from interface.browser_connection import browser_session
+from interface.browser_connection import browser_session, await_browser_connection
 from interface.interface_agent import extract_question, submit_answer
 from error_handling.premature_submission import handle_premature_submission
 from error_handling.CAPTCHA_solve import identify_captcha, solve_captcha_auto
@@ -18,11 +19,15 @@ async def main():
     captcha_api_key = os.getenv("captchaAPIkey")
     print("OpenRouter key loaded:", bool(ai_api_key))
     print("2Captcha key loaded:", bool(captcha_api_key))
-    
+
     async with browser_session() as session:
         survey_status = None
         exception_counter = 0
-        time.sleep(10) #this gives some time for mcp connection with browser to establish (so agent wont start running before browser connection is evens et up)
+
+        #Test for browser connection
+        await await_browser_connection(session)
+
+
         while True:
             if exception_counter > 3:
                 return

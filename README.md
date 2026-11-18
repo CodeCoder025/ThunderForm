@@ -11,7 +11,8 @@ This would repeat until the survey is complete, determined by the interface agen
 
 ### Yet to Do:
 
-- I dont know why the agent seems to be hallucinating so badly today. Maybe use deepseek instead of gpt oss?
+- browser connection actually works, but the json enforcement restricts the models expression of tool calls
+
 - completing multiple surveys in a single run (can navigate between a survey selection menu, or between captcha completion and survey start. This would essentially be the orchestrator agent)
 - (MASSIVE UPDATE): let agent live on a cloud server or constantly-running VM, and connect it to a Telegram bot. Add feature such that agent can complete form / survey on user's behalf through a link being sent to it through telegram
 - option to disable synthesis of hypothetical responses

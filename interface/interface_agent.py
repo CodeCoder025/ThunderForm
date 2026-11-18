@@ -58,10 +58,9 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
             model = "deepseek/deepseek-v4-flash",
             messages = messages,
             tools=format_tools_advertisement((await session.list_tools()).tools),
-            tool_choice = "auto",
             response_format = {
                 "type":"json_schema",
-                "json":{
+                "json_schema":{
                     "name":"answer_submission_schema",
                     "strict":True,
                     "schema":schema
@@ -141,7 +140,6 @@ async def extract_question(api_key, session):
             model = "deepseek/deepseek-v4-flash",
             messages = messages,
             tools=format_tools_advertisement((await session.list_tools()).tools),
-            tool_choice="auto",
             response_format = {
                 "type":"json_schema",
                 "json_schema":{
