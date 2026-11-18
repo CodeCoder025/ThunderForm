@@ -64,7 +64,7 @@ def respond_to_survey(question, api_key=os.getenv("openRouterAPIkey")):
 
         tool_calls = chat.choices[0].message.tool_calls
 
-        if tool_calls is None:
+        if tool_calls is None: #If model returns empty list, answer submission agent tends to undo all existing fields
             info_given = [question, messages[-1].model_dump().get("content")]
             if None in info_given or "None" in info_given:
                 return "Abort"

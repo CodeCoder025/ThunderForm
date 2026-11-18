@@ -1,7 +1,6 @@
 from openai import OpenAI
 from openrouter import OpenRouter
 import os
-import ast
 import json
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -37,35 +36,37 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
     - NEVER submit the survey prematurely.
     - Do not modify previously submitted answers.
 
-    ## Return Codes
-    - 0: Successfully filled in.
+    ## Submission Codes
+    - 0: Successfully filled in, and if required, navigated to the next page.
     - 1: Unable to fill in.
     - 2: Entire survey completed and submitted, with no further pages to navigate to.
     You are to infer, based on context and DOM of the webpage, when to return with code 2. For example, if the next navigational button available is a "submit" button or "finish" button instead of a "proceed" button, you can click it an return code 2.
 
     ## Output Format
-    Return ONLY in the format specified in the JSON schema passed in the API call.
-    """},
-                {"role":"user","content":answer}]
+    Do not return anything to the user in the form of a message. To return the submission code, use the return_state tool.
+    """}]
 
     schema = AnswerSubmission.model_json_schema()
 
     if answer == "Abort":
-        messages = [{"role":"system","content":"Navigate to the next section of the survey."}]
+        messages.append({"role":"system","content":"User has no answer to submit. Navigate to the next section of the survey."})
+    else:
+        messages.append({"role":"user","content":answer})
+
+    tools = format_tools_advertisement((await session.list_tools()).tools)
+    tools.append({"type":"function",
+                  "function":{
+                      "name":"return_state",
+                      "description":"Returns the submission code to the user. 0 = successfully filled in; 1 = unable to fill in; 2 = entire page filled in, with no further pages of questions to navigate to.",
+                      "parameters":schema
+                  }})
 
     while True:
         chat = client.chat.completions.create(
             model = "deepseek/deepseek-v4-flash",
             messages = messages,
-            tools=format_tools_advertisement((await session.list_tools()).tools),
-            response_format = {
-                "type":"json_schema",
-                "json_schema":{
-                    "name":"answer_submission_schema",
-                    "strict":True,
-                    "schema":schema
-                }
-            }
+            tools=tools,
+            tool_choice="required"
         )
 
         if not chat.choices or len(chat.choices) == 0:
@@ -74,25 +75,17 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
         tool_calls = chat.choices[0].message.tool_calls
         messages.append(chat.choices[0].message)
         if not tool_calls or len(tool_calls) == 0:
-            output = chat.choices[0].message.content
-            try:
-                result = AnswerSubmission.model_validate_json(output)
-                return_code = result.model_dump().get("return_code")
-                return return_code
-            except:
-                if output.startswith("```json") and output.endswith("```"):
-                    _, back = output.split("n")
-                    middle, _ = back.split("`")
-                    return_code = int(ast.literal_eval(middle).get("return code"))
-                    return return_code
-                messages.append({"role":"user","content":f"""Ouptut must be in JSON format as specified by schema only, previous output was of type {type(output)}"""})
-                print(output)
-                print("Answer Submission Agent Failed to Format. Retrying...")
-                continue
+            print("Answer Submission Agent Failed to Return with Tool Call!")
+            messages.append({"role":"system","content":"Return the submission status code using the tool return_state. Do not return a message directly to the user!"})
+            continue
         else:
             tool_name = tool_calls[0].function.name
             print("Answer Submission (Interface) Agent Called Tool: %s"%tool_name)
             arguments = json.loads(tool_calls[0].function.arguments)
+                        
+            if tool_name == "return_state":
+                return arguments["return_code"]
+            
             output = await execute_tool(session, tool_name, arguments)
             messages.append({"role":"tool","tool_call_id":tool_calls[0].id, "content":output})
 
@@ -130,24 +123,23 @@ async def extract_question(api_key, session):
     8. If you cannot identify an unanswered question, return null.
 
     #OUTPUT:
-    Return ONLY in the valid JSON format as specified in the schema passed in with the API call. 
-"""}]
+    Do not return a message to the user. Return the question via the return_question tool, never through a message!
+"""}, {"role":"user","content":"Begin. Inspect the page and return the first unanswered question via return_question. "}]
 
     schema = ExtractQuestionResponse.model_json_schema()
-
+    tools = format_tools_advertisement((await session.list_tools()).tools)
+    tools.append({"type":"function",
+                  "function":{
+                      "name":"return_question",
+                      "description":"returns the extracted question to the user",
+                      "parameters":schema
+                  }})
     while True:
         chat = client.chat.completions.create(
             model = "deepseek/deepseek-v4-flash",
             messages = messages,
-            tools=format_tools_advertisement((await session.list_tools()).tools),
-            response_format = {
-                "type":"json_schema",
-                "json_schema":{
-                    "name":"question_extractor_response",
-                    "strict":True,
-                    "schema":schema
-                }
-            }
+            tools=tools,
+            tool_choice="required"
         )
 
         if not chat.choices or len(chat.choices) == 0:
@@ -156,18 +148,14 @@ async def extract_question(api_key, session):
         tool_calls = chat.choices[0].message.tool_calls
         messages.append(chat.choices[0].message)
         if (not tool_calls or len(tool_calls) == 0):
-            model_output = chat.choices[0].message.content
-            try:
-                model_output = ExtractQuestionResponse.model_validate_json(model_output)
-                formatted_output = model_output.model_dump()
-            except:
-                messages.append({"role":"user","content":f"""Output must be in JSON format of {{"question":str, "type":str,"options": list or null}} only, previous output was of type {type(model_output)}!"""})
-                print("Question Extractor Agent Failed to Format. Retrying...")
-                continue
-            return formatted_output
+            print("Question Extractor Agent Did Not Return with Tool Call")
+            messages.append({"role":"system","content":"Do not return a message to the user. Return only using the return_question tool!"})
+            continue
         else:
             tool_name = tool_calls[0].function.name
             print("Question Extractor (Interface) Agent Called Tool: %s"%tool_name)
-            arguments = ast.literal_eval(tool_calls[0].function.arguments)
+            arguments = json.loads(tool_calls[0].function.arguments)
+            if tool_name == "return_question":
+                return arguments
             output = await execute_tool(session, tool_name, arguments)
             messages.append({"role":"tool","tool_call_id":tool_calls[0].id, "content":output})
