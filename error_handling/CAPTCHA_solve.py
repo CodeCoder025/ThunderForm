@@ -31,12 +31,12 @@ class CaptchaIdentifierResponse(BaseModel):
 
 async def identify_captcha(ai_key, session):
     client = OpenAI(api_key = ai_key, base_url = "https://openrouter.ai/api/v1")
-    tool_calls_left = 6
+    tool_calls_left = 10
     messages = [{"role":"system","content":"""
         You are a CAPTCHA identification agent.
 
         TASK:
-        Inspect the currently visible browser page using the available browser tools or screenshot.
+        Inspect the DOM of the currently visible browser page using the available browser tools or screenshot.
 
         Determine whether a CAPTCHA challenge is visibly present.
 
@@ -54,7 +54,7 @@ async def identify_captcha(ai_key, session):
         - If uncertain, return code 0.
 
         Do not return a message directly to the user. Return the classification code using the return_classification_code tool call
-"""}]
+"""}, {"role":"user","content":"classify the current page."}]
 
     schema = CaptchaIdentifierResponse.model_json_schema()
     
@@ -208,7 +208,7 @@ async def solve_captcha_auto(captcha_key, ai_key, session, captcha_type):
     solver = TwoCaptcha(captcha_key)
     captcha_path = Path(__file__).resolve().parent / "CAPTCHA.jpg"
     captcha_path = captcha_path.as_posix()
-    tool_calls_left = 5
+    tool_calls_left = 10
     if captcha_type == 1:
         response = solver.normal(str(captcha_path)) #returns text
         specific_instruction = "For a normal captcha (scrambled/messy text), a string of the text will be given as the solution."
@@ -243,25 +243,24 @@ async def solve_captcha_auto(captcha_key, ai_key, session, captcha_type):
     - 1: CAPTCHA solve failed
 
     #OUTPUT:
-    Return ONLY a valid JSON object, in the form stated in the json schema given in the API call.
-    Do not add any commentary, supplementary text, or markdown fencing.**
+    Return ONLY using the tool output_return_code. Do not return a message directly to the user.**
 """},
     {"role":"user","content":result}]
     
     tools_available = format_tools_advertisement((await session.list_tools()).tools)
+    tools_available.append({"type":"function",
+                            "function":{
+                                "name":"output_return_code",
+                                "description":"outputs the return code back to the user",
+                                "parameters":schema
+                            }})
     exception_counter = 0
     while True:
         chat = client.chat.completions.create(
             model = "openai/gpt-oss-120b",
             messages = messages,
             tools=tools_available,
-            tool_choice="auto",
-            response_format = {"type":"json_schema",
-                               "json_schema":{
-                                   "name":"captcha_automatic_solver",
-                                   "strict":True,
-                                   "schema":schema
-                               }}
+            tool_choice="required"
         )
 
         if not chat.choices or len(chat.choices) == 0:
@@ -270,25 +269,19 @@ async def solve_captcha_auto(captcha_key, ai_key, session, captcha_type):
         tool_calls = chat.choices[0].message.tool_calls
         messages.append(chat.choices[0].message)
         if (not tool_calls or len(tool_calls) == 0):
-            try:
-                model_output = captcha_solver_response.model_validate_json(chat.choices[0].message.content).return_code
-            except:
-                exception_counter += 1
-                if exception_counter == 6:
-                    raise RuntimeError("Captcha Solver Agent returned with more than 5 exceptions")
-                messages.append({"role":"user","content":f"""Output must be in JSON schema format of {schema}!"""})
-                print("CAPTCHA Solver Agent Failed to Format. Retrying...")
-                continue
-
-            return model_output
+            print("CAPTCHA Solver Model Failed to Return with Tool Call!")
+            messages.append({"role":"system","content":"Do not return a message directly to the user. The return code should be output in the form of a tool call, using the output_return_code tool!"})
+            continue
         else:
             for tool_call in tool_calls:
-                if tool_calls_left == 0:
-                    raise RuntimeError("CAPTCHA Solver Agent has run out of tool calls")
-                tool_calls_left -= 1
                 tool_name = tool_call.function.name
                 print("CAPTCHA Solver Agent Called Tool: %s"%tool_name)
                 arguments = json.loads(tool_call.function.arguments)
+                if tool_name == "output_return_code":
+                    return arguments["return_code"]
+                if tool_calls_left == 0:
+                    raise RuntimeError("CAPTCHA Solver Agent has run out of tool calls")
+                tool_calls_left -= 1
                 output = await execute_tool(session, tool_name, arguments)
                 messages.append({"role":"tool","tool_call_id":tool_call.id, "content":output})
                 messages.append({"role":"system","content":f"""

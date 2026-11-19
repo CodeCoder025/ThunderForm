@@ -16,4 +16,7 @@ What city do you live in? What city do you live in?
 Is the recording equal to the last 30 days of the origin? Not applicable / I don't know Favorite color: Blue
  
 What is the first unanswered question in the survey currently displayed in the user's browser? Which is your favorite genre? 
-No question: N/A
+No question: N/A 
+Are you an international tourist?: No 
+What did you know about Boat Quay's food and/or heritage prior to this visit? Historic riverside with colonial shophouses, famous for satay, chili crab, and Peranakan dishes 
+What was the main purpose of visiting Singapore during your visits? Food & Beverages

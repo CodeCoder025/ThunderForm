@@ -9,10 +9,9 @@ It sends the question to the response agent, which reads _my_profile.txt_ to det
 The reponse agent then sends the question, along with the answer, back to the interface agent, which inputs the answer into the form or survey.
 This would repeat until the survey is complete, determined by the interface agent.
 
-### Yet to Do:
+### Yet to Do / Outstanding Errors:
 
-- Yet to make return schema from the model in the form of a tool call for solve_captcha_auto function. This has already been done for interface and other captcha agents.
-
+- more rigorous bug tests
 - completing multiple surveys in a single run (can navigate between a survey selection menu, or between captcha completion and survey start. This would essentially be the orchestrator agent)
 - (MASSIVE UPDATE): let agent live on a cloud server or constantly-running VM, and connect it to a Telegram bot. Add feature such that agent can complete form / survey on user's behalf through a link being sent to it through telegram
 - option to disable synthesis of hypothetical responses

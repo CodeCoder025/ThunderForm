@@ -27,25 +27,26 @@ async def main():
         #Test for browser connection
         await await_browser_connection(session)
 
-
+        submission_code = None
         while True:
             if exception_counter > 3:
                 return
 
-            captcha_code = await identify_captcha(ai_api_key, session)
+            if submission_code == 3:
+                captcha_code = await identify_captcha(ai_api_key, session)
 
-            if captcha_code != 0:
-                captcha_success_code = await solve_captcha_auto(captcha_api_key, ai_api_key, session, captcha_code)
-                if captcha_success_code == 1:
+                if captcha_code != 0:
                     captcha_success_code = await solve_captcha_auto(captcha_api_key, ai_api_key, session, captcha_code)
                     if captcha_success_code == 1:
-                        continue #Since captcha solving is expensive ill only reactivate the loop once the solver fails twice
+                        captcha_success_code = await solve_captcha_auto(captcha_api_key, ai_api_key, session, captcha_code)
+                        if captcha_success_code == 1:
+                            continue #Since captcha solving is expensive ill only reactivate the loop once the solver fails twice
 
             question = await extract_question(ai_api_key, session)
             answer = respond_to_survey(str(question), ai_api_key)
             submission_code = int(await submit_answer(answer, session, ai_api_key))
 
-            if submission_code == 0:
+            if submission_code == 0 or submission_code == 3:
                 continue
             elif submission_code == 2:
                 break

@@ -9,8 +9,11 @@ from typing import Literal
 
 class AnswerSubmission(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    return_code : Literal[0,1,2] = Field(
-        description="0 = answer successfully filled in; 1 = unable to fill in; 2 = entire survey completed and submitted, with no other pages to navigate to"
+    return_code : Literal[0,1,2,3] = Field(
+        description="""0 = Successfully filled in question, without the need to navigate to any pages.; 
+        1 = Unable to fill in, or any anomalies (including, but not limited to, accidentally navigating to the next page without finishing all mandatory questions);
+        2 = entire survey completed and submitted, with no other pages to navigate to;
+        3 = Current page, but not the whole survey, is complete, and navigation to the next page has been successful."""
     )
 async def submit_answer(answer, session, api_key): #the answer variable is a list of the question and the answer
 
@@ -28,19 +31,21 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
     2. Identify the relevant question.
     3. Fill in the answer.
     4. Check whether other questions remain unanswered.
-    5. Only navigate when the page is complete.
+    5. Only navigate when there are no incomplete questions on the current page.
     6. Exit and output the return code.
 
     ## Critical Rules
     - NEVER navigate while unanswered questions remain.
     - NEVER submit the survey prematurely.
     - Do not modify previously submitted answers.
+    - You are allowed to scroll up and down the current page if needed.
 
     ## Submission Codes
-    - 0: Successfully filled in, and if required, navigated to the next page.
-    - 1: Unable to fill in.
+    - 0: Successfully filled in question, without the need to navigate to any next page since unanswered questions remain.
+    - 1: Unable to fill in, or any anomalies (including, but not limited to, accidentally navigating to the next page without finishing all mandatory)
     - 2: Entire survey completed and submitted, with no further pages to navigate to.
-    You are to infer, based on context and DOM of the webpage, when to return with code 2. For example, if the next navigational button available is a "submit" button or "finish" button instead of a "proceed" button, you can click it an return code 2.
+    - 3: Current page, but not the whole survey, is complete, and navigation to the next page has been successful.
+    You are to infer, based on context and DOM of the webpage, when to return with code 2. For example, if the next navigational button available is a "submit" button or "finish" button instead of a "proceed" button, you can click it and return code 2.
 
     ## Output Format
     Do not return anything to the user in the form of a message. To return the submission code, use the return_state tool.
@@ -84,6 +89,7 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
             arguments = json.loads(tool_calls[0].function.arguments)
                         
             if tool_name == "return_state":
+                print("Answer Submission Agent Returned with Code %s"%arguments["return_code"])
                 return arguments["return_code"]
             
             output = await execute_tool(session, tool_name, arguments)
@@ -156,6 +162,7 @@ async def extract_question(api_key, session):
             print("Question Extractor (Interface) Agent Called Tool: %s"%tool_name)
             arguments = json.loads(tool_calls[0].function.arguments)
             if tool_name == "return_question":
+                print(arguments)
                 return arguments
             output = await execute_tool(session, tool_name, arguments)
             messages.append({"role":"tool","tool_call_id":tool_calls[0].id, "content":output})
