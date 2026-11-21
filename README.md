@@ -22,6 +22,8 @@ Replace the placeholders with actual values of your API keys. Though not recomme
 
 **Important**: Restart your terminal or IDE after installing these variables. A successful environment variable load will be confirmed by a print statement after the script runs.
 
+To use, simply open the link of the survey in a tab in your browser, and run the _main.py_ script. Customize your profile in _my_profile.txt_, or simply leave it blank for a hypothetical profile!
+
 ## Workflow
 
 The interface agent, using the Browser MCP Connection, interacts with the browser and extracts the question.
