@@ -27,12 +27,27 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
     Fill in the field of the given question with the answer provided.
 
     ## Workflow
-    1. Inspect the current page.
-    2. Identify the relevant question.
-    3. Fill in the answer.
-    4. Check whether other questions remain unanswered.
-    5. Only navigate when there are no incomplete questions on the current page.
-    6. Exit and output the return code.
+    1. Inspect the current page and identify all mandatory questions.
+    2. Fill in only the relevant question according to the question and answer provided.
+    3. Inspect the entire current page, including questions
+    outside the visible viewport.
+    4. Determine whether any mandatory questions remain unanswered.
+
+    5. IF other mandatory questions on the same page remain unanswered:
+    - Do not navigate.
+    - Return with code 0
+
+    6. IF ALL mandatory questions are answered:
+    - Locate the page navigation button.
+    - If a "Next", "Continue", or equivalent button exists,
+        click it.
+    - Inspect the resulting page to verify navigation succeeded.
+    - Return code 3.
+    - If a final "Submit" or "Finish" button exists instead,
+        submit the survey and verify successful submission.
+    - Return code 2.
+
+    7. If navigation or submission fails, return code 1.
 
     ## Critical Rules
     - NEVER navigate while unanswered questions remain.
@@ -41,10 +56,11 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
     - You are allowed to scroll up and down the current page if needed.
 
     ## Submission Codes
-    - 0: Successfully filled in question, without the need to navigate to any next page since unanswered questions remain.
+    - 0: Successfully filled in question, without the need to navigate to any next page because unanswered questions remain on the page which the user is currently on.
     - 1: Unable to fill in, or any anomalies (including, but not limited to, accidentally navigating to the next page without finishing all mandatory)
     - 2: Entire survey completed and submitted, with no further pages to navigate to.
     - 3: Current page, but not the whole survey, is complete, and navigation to the next page has been successful.
+
     You are to infer, based on context and DOM of the webpage, when to return with code 2. For example, if the next navigational button available is a "submit" button or "finish" button instead of a "proceed" button, you can click it and return code 2.
 
     ## Output Format
@@ -62,7 +78,12 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
     tools.append({"type":"function",
                   "function":{
                       "name":"return_state",
-                      "description":"Returns the submission code to the user. 0 = successfully filled in; 1 = unable to fill in; 2 = entire page filled in, with no further pages of questions to navigate to.",
+                      "description": """
+                        Returns the submission code to the user.
+                        0 = successfully filled in;
+                        1 = unable to fill in;
+                        2 = entire page filled in, with no further pages of questions to navigate to.
+                        """,
                       "parameters":schema
                   }})
 
@@ -84,16 +105,17 @@ async def submit_answer(answer, session, api_key): #the answer variable is a lis
             messages.append({"role":"system","content":"Return the submission status code using the tool return_state. Do not return a message directly to the user!"})
             continue
         else:
-            tool_name = tool_calls[0].function.name
-            print("Answer Submission (Interface) Agent Called Tool: %s"%tool_name)
-            arguments = json.loads(tool_calls[0].function.arguments)
-                        
-            if tool_name == "return_state":
-                print("Answer Submission Agent Returned with Code %s"%arguments["return_code"])
-                return arguments["return_code"]
-            
-            output = await execute_tool(session, tool_name, arguments)
-            messages.append({"role":"tool","tool_call_id":tool_calls[0].id, "content":output})
+            for tool_call in tool_calls:
+                tool_name = tool_call.function.name
+                print("Answer Submission (Interface) Agent Called Tool: %s"%tool_name)
+                arguments = json.loads(tool_call.function.arguments)
+                            
+                if tool_name == "return_state":
+                    print("Answer Submission Agent Returned with Code %s"%arguments["return_code"])
+                    return arguments["return_code"]
+                
+                output = await execute_tool(session, tool_name, arguments)
+                messages.append({"role":"tool","tool_call_id":tool_call.id, "content":output})
 
 class ExtractQuestionResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -117,6 +139,15 @@ async def extract_question(api_key, session):
     #OBJECTIVE:
     Identify the **first unanswered question** in the survey currently
     displayed in the user's browser.
+
+    #RULES:
+    1. Use the browser ONLY when you need to inspect the webpage.
+    2. Do not call the browser repeatedly to verify information
+    that you have already obtained.
+    3. Once you have extracted the question, immediately call
+    return_question.
+    4. Never browse for additional information.
+
 
     #INSTRUCTIONS:
     1. Inspect the currently visible browser page.
@@ -158,11 +189,12 @@ async def extract_question(api_key, session):
             messages.append({"role":"system","content":"Do not return a message to the user. Return only using the return_question tool!"})
             continue
         else:
-            tool_name = tool_calls[0].function.name
-            print("Question Extractor (Interface) Agent Called Tool: %s"%tool_name)
-            arguments = json.loads(tool_calls[0].function.arguments)
-            if tool_name == "return_question":
-                print(arguments)
-                return arguments
-            output = await execute_tool(session, tool_name, arguments)
-            messages.append({"role":"tool","tool_call_id":tool_calls[0].id, "content":output})
+            for tool_call in tool_calls:
+                tool_name = tool_call.function.name
+                print("Question Extractor (Interface) Agent Called Tool: %s"%tool_name)
+                arguments = json.loads(tool_call.function.arguments)
+                if tool_name == "return_question":
+                    print(arguments)
+                    return arguments
+                output = await execute_tool(session, tool_name, arguments)
+                messages.append({"role":"tool","tool_call_id":tool_call.id, "content":output})

@@ -32,7 +32,7 @@ async def main():
             if exception_counter > 3:
                 return
 
-            if submission_code == 3:
+            if submission_code == 3 or submission_code == None:
                 captcha_code = await identify_captcha(ai_api_key, session)
 
                 if captcha_code != 0:

@@ -11,6 +11,7 @@ This would repeat until the survey is complete, determined by the interface agen
 
 ### Yet to Do / Outstanding Errors:
 
+- answer submission agent would sometimes go rogue and submit its own answers without consulting the question extractor and response agents
 - more rigorous bug tests
 - completing multiple surveys in a single run (can navigate between a survey selection menu, or between captcha completion and survey start. This would essentially be the orchestrator agent)
 - (MASSIVE UPDATE): let agent live on a cloud server or constantly-running VM, and connect it to a Telegram bot. Add feature such that agent can complete form / survey on user's behalf through a link being sent to it through telegram

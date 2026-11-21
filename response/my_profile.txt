@@ -19,4 +19,5 @@ What is the first unanswered question in the survey currently displayed in the u
 No question: N/A 
 Are you an international tourist?: No 
 What did you know about Boat Quay's food and/or heritage prior to this visit? Historic riverside with colonial shophouses, famous for satay, chili crab, and Peranakan dishes 
-What was the main purpose of visiting Singapore during your visits? Food & Beverages
+What was the main purpose of visiting Singapore during your visits? Food & Beverages 
+Have you dined in Boat Quay before, or are you going to? No
