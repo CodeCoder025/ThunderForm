@@ -4,6 +4,8 @@ ThunderForm is an **autonomous survey completion and form filling agent** which 
 
 ## Setup
 
+**Please read section on "Terms of Use" before using!**
+
 To install dependencies, run the following:
 `pip install 2captcha-python pillow openrouter openai pydantic`
 
@@ -27,19 +29,15 @@ It sends the question to the response agent, which reads _my_profile.txt_ to det
 The reponse agent then sends the question, along with the answer, back to the interface agent, which inputs the answer into the form or survey.
 This would repeat until the survey is complete, determined by the interface agent.
 
-### Dependencies
-
-2Captcha, Pillow, BrowserMCP, OpenRouter, OpenAI, and Pydantic are necessary for this script to run as intended. An OpenRouter API key with access to Deepseek V4 Flash will be necessary. As this is a premium model, credits will be needed (user can expect a cost of less than one cent per five questions, though subject to question complexity)
-
 ### Risks
 
 Please note that this software gives the agent control over your browser. By running any code in this project, you accept and are willing to bear the risks associated with this agentic control.
 
-### Violation of Terms of Use
+### Terms of Use
 
-Many survey or form-hosting software prohibit the use of agents or autonomous algorithms to fill in surveys. Please ensure that the use of ThunderForm does not violate the terms of use of any third-party software. This tool is built to be used in good faith, as well as for learning purposes ONLY.
+Many survey or form-hosting software prohibit the use of agents or autonomous algorithms to fill in surveys. ThunderForm should only be used for ethical purposes, intended for and under the knowledge of all parties. Please ensure that the use of ThunderForm does not violate the terms of use of any third-party software. This tool is built to be used in good faith, as well as for learning purposes ONLY. The consequences of any misuse is to be borne by the user themself.
 
-### Yet to Do / Outstanding Errors:
+### Future Updates / Bug Fixes
 
 - answer submission agent would sometimes go rogue and submit its own answers without consulting the question extractor and response agents
 - completing multiple surveys in a single run (can navigate between a survey selection menu, or between captcha completion and survey start. This would essentially be the orchestrator agent)
