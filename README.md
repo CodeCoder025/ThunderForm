@@ -1,4 +1,4 @@
-# ThunderForm
+# ThunderForm (Alpha)
 
 ThunderForm is an **autonomous survey completion and form filling agent** which helsp users fill up long, tedious forms with minimum human intervention. The form is filled using information provided by the user in the _my_profile.txt_ file (under the _response_ folder), or hypothetically synthesised by the agent.
 
